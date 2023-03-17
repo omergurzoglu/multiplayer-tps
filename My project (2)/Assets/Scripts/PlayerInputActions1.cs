@@ -71,15 +71,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""OneTap"",
-                    ""type"": ""Button"",
-                    ""id"": ""99480949-fab4-4a8c-9c41-7940c4c2d408"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -181,17 +172,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
                     ""action"": ""Sprint"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": """",
-                    ""id"": ""7f576636-d3f3-47ad-b28f-c2286b7af9a5"",
-                    ""path"": ""<Mouse>/leftButton"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""OneTap"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -266,7 +246,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
         m_Player_HoldFire = m_Player.FindAction("HoldFire", throwIfNotFound: true);
         m_Player_Aim = m_Player.FindAction("Aim", throwIfNotFound: true);
         m_Player_Sprint = m_Player.FindAction("Sprint", throwIfNotFound: true);
-        m_Player_OneTap = m_Player.FindAction("OneTap", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -331,7 +310,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_HoldFire;
     private readonly InputAction m_Player_Aim;
     private readonly InputAction m_Player_Sprint;
-    private readonly InputAction m_Player_OneTap;
     public struct PlayerActions
     {
         private @PlayerInputActions1 m_Wrapper;
@@ -341,7 +319,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
         public InputAction @HoldFire => m_Wrapper.m_Player_HoldFire;
         public InputAction @Aim => m_Wrapper.m_Player_Aim;
         public InputAction @Sprint => m_Wrapper.m_Player_Sprint;
-        public InputAction @OneTap => m_Wrapper.m_Player_OneTap;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -366,9 +343,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
                 @Sprint.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnSprint;
                 @Sprint.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnSprint;
                 @Sprint.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnSprint;
-                @OneTap.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnOneTap;
-                @OneTap.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnOneTap;
-                @OneTap.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnOneTap;
             }
             m_Wrapper.m_PlayerActionsCallbackInterface = instance;
             if (instance != null)
@@ -388,9 +362,6 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
                 @Sprint.started += instance.OnSprint;
                 @Sprint.performed += instance.OnSprint;
                 @Sprint.canceled += instance.OnSprint;
-                @OneTap.started += instance.OnOneTap;
-                @OneTap.performed += instance.OnOneTap;
-                @OneTap.canceled += instance.OnOneTap;
             }
         }
     }
@@ -447,6 +418,5 @@ public partial class @PlayerInputActions1 : IInputActionCollection2, IDisposable
         void OnHoldFire(InputAction.CallbackContext context);
         void OnAim(InputAction.CallbackContext context);
         void OnSprint(InputAction.CallbackContext context);
-        void OnOneTap(InputAction.CallbackContext context);
     }
 }

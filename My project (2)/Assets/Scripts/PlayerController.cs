@@ -1,12 +1,29 @@
+
 using System.Collections;
 using Cinemachine;
+using DG.Tweening;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.InputSystem;
-public class PlayerController : MonoBehaviour
+
+public class PlayerController : NetworkBehaviour 
 {
+    #region Fields
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private LayerMask environmentMask;
+    [SerializeField] private Rig aimRig;
+    [SerializeField] private float deltaTimeMultiplier =   1.0f ;
+    [SerializeField] private float blendDampTime=0.1f;
+    [SerializeField] private Transform cineMachineCameraTarget;
+    [SerializeField] private float cameraAngleOverride = 0.0f;
+    [SerializeField] private CinemachineVirtualCamera virtualCamera;
+    [SerializeField] private CinemachineVirtualCamera aimCamera;
+    [SerializeField] [Range(0f, 2000f)] private float cameraSmoothDamp;
+    [SerializeField] private bool _isAiming;
+    [SerializeField] private ParticleSystem muzzleParticle;
+    [SerializeField] private Transform Gun;
+    [SerializeField] private Vector2 _screenCenter;
     private Vector3 _moveDirection;
     private Vector3 _rawDirection;
     private CharacterController _characterController;
@@ -19,41 +36,34 @@ public class PlayerController : MonoBehaviour
     private float _cinemachineTargetYaw;
     private float _cinemachineTargetPitch;
     private float _aimRigWeight;
-    [SerializeField] private Rig aimRig;
     private Camera _camera;
-    [SerializeField]private float deltaTimeMultiplier =   1.0f ;
-    [SerializeField] private float blendDampTime=0.1f;
-    [SerializeField] private Transform cineMachineCameraTarget;
-    [SerializeField]private float cameraAngleOverride = 0.0f;
-    [SerializeField] private CinemachineVirtualCamera virtualCamera;
-    [SerializeField] private CinemachineVirtualCamera aimCamera;
-    [SerializeField] [Range(0f, 2000f)] private float cameraSmoothDamp;
     private static readonly int XAxisParameter = Animator.StringToHash("Xaxis");
     private static readonly int YAxisParameter = Animator.StringToHash("Yaxis");
     private static readonly int IsAimingAnimation = Animator.StringToHash("IsAiming");
-    [SerializeField]private Vector2 _screenCenter;
+    private static readonly int IsShooting = Animator.StringToHash("IsShooting");
     private static readonly int IsSprinting = Animator.StringToHash("IsSprinting");
-    public bool isShooting=false;
+    public bool isShooting;
     public bool isSprinting;
-    [SerializeField]private bool _isAiming;
     private Coroutine _adjustAimRigWeightShooting;
-
+    private Coroutine _startShootingCoroutine;
+    private float _lastShootTime;
+    
+    #endregion
+    
     #region MonoBehavior
     private void Awake()
-
     {
-        _camera = Camera.main;
+        //_camera = Camera.main;
+        _camera = GetComponentInChildren<Camera>();
         _animator = GetComponent<Animator>();
         _characterController = GetComponent<CharacterController>();
         _cinemachineTargetYaw = cineMachineCameraTarget.transform.rotation.eulerAngles.y;
         aimRig.weight = 0f;
     }
-
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-        
     }
     private void Update()
     {
@@ -61,28 +71,16 @@ public class PlayerController : MonoBehaviour
         Move();
         CheckGround();
         LerpRig();
-       
     }
     private void LateUpdate()
     {
         CameraRotation();
     }
+
     #endregion
     
     #region MainMethods
-    // private void Move()
-    // {
-    //     Vector3 cameraForward = _camera.transform.forward;
-    //     cameraForward.y = 0f;
-    //     Quaternion cameraRotation = Quaternion.LookRotation(cameraForward);
-    //     Vector3 direction = cameraRotation * Vector3.forward * _rawDirection.z + cameraRotation * Vector3.right * _rawDirection.x;
-    //     direction.y = 0f;
-    //     Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
-    //     transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * cameraSmoothDamp);
-    //     _animator.SetFloat(XAxisParameter, _moveDirection.x,blendDampTime,Time.deltaTime);
-    //     _animator.SetFloat(YAxisParameter, _moveDirection.y,blendDampTime,Time.deltaTime);
-    //     _characterController.Move(direction.normalized * (moveSpeed * Time.deltaTime));
-    // }
+    
     private void Move()
     {
         Vector3 cameraForward = _camera.transform.forward;
@@ -90,7 +88,6 @@ public class PlayerController : MonoBehaviour
         Quaternion cameraRotation = Quaternion.LookRotation(cameraForward);
         Quaternion targetRotation = Quaternion.LookRotation(cameraForward);
         transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * cameraSmoothDamp);
-
         if (isSprinting)
         {
             Vector3 sprintDirection = cameraForward;
@@ -101,7 +98,7 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 direction = cameraRotation * Vector3.forward * _rawDirection.z + cameraRotation * Vector3.right * _rawDirection.x;
             direction.y = 0f;
-            //
+            
             _animator.SetFloat(XAxisParameter, _moveDirection.x, blendDampTime, Time.deltaTime);
             _animator.SetFloat(YAxisParameter, _moveDirection.y, blendDampTime, Time.deltaTime);
             _characterController.Move(direction.normalized * (moveSpeed * Time.deltaTime));
@@ -125,47 +122,23 @@ public class PlayerController : MonoBehaviour
  
     private void Shoot()
     {
-        isShooting = true;
+        GunKnockBack();
         if (_aimRigWeight <= 0.1f)
         {
             _aimRigWeight = 1f;
         }
         Ray ray = _camera.ScreenPointToRay(_screenCenter);
-        
         if (Physics.Raycast(ray, out var hit,100f,environmentMask))
         {
             Vector3 hitPoint = hit.point;
+            Debug.Log(hitPoint);
         }
-        
-    }
-    public bool coroutineIsRunning;
-    
-    IEnumerator DecreaseRigWeight(float time)
-    {
-        
-        coroutineIsRunning = true;
-        Debug.Log("coroutine check");
-        float elapsedTime = 0f;
-        while (elapsedTime < time)
-        {
-            if (Input.GetMouseButtonDown(0))
-            {
-                elapsedTime = 0f;
-                yield return null;
-            }
-            else
-            {
-                elapsedTime += Time.deltaTime;
-                yield return null;
-            }
-        }
-        Debug.Log("coroutine delay and end check");
-        _aimRigWeight = 0f;
-        isShooting = false;
-        coroutineIsRunning = false;
     }
    
-    
+    private void GunKnockBack()
+    {
+        Gun.DOShakePosition(0.06f, 0.02f, 1, 1f, false,false);
+    }
     private void CameraRotation()
     {
         if (_look.sqrMagnitude >= 0.01f )
@@ -188,9 +161,6 @@ public class PlayerController : MonoBehaviour
         if (lfAngle > 360f) lfAngle -= 360f;
         return Mathf.Clamp(lfAngle, lfMin, lfMax);
     }
-
-   
-    
     #endregion
     
     #region Input
@@ -198,14 +168,7 @@ public class PlayerController : MonoBehaviour
     {
         _moveDirection = context.ReadValue<Vector2>();
         _rawDirection = new Vector3(_moveDirection.x, 0, _moveDirection.y);
-        
-        if (_animator.GetBool(IsSprinting))
-        {
-            _rawDirection.x = 0f;
-            _rawDirection.z = Mathf.Clamp(_rawDirection.z, 0f, 1f);
-        }
     }
-
     public void OnAim(InputAction.CallbackContext context)
     {
         if (!_isAiming&&!isSprinting)
@@ -229,54 +192,88 @@ public class PlayerController : MonoBehaviour
     }
     public void OnShoot(InputAction.CallbackContext context)
     {
-        if (context.started&&!isSprinting)
+        if (context.started&&!isSprinting&& Time.time - _lastShootTime >= 0.1f)
         {
-            Shoot();
+            _startShootingCoroutine = StartCoroutine(ShootingCoroutine());
             isShooting = true;
-            
+            _animator.SetBool(IsShooting,true);
+            _lastShootTime = Time.time;
         }
-
-        if (context.canceled&&!_isAiming)
+        if (context.canceled)
         {
-            _adjustAimRigWeightShooting = StartCoroutine(DecreaseRigWeight(1f));
-        }
-    }
-
-    public void OnOneTap(InputAction.CallbackContext context)
-    {
-        if (context.started&&!isSprinting)
-        {
-            Shoot();
-            isShooting = true;
-        }
-
-        if (context.canceled&&!_isAiming)
-        {
-            _adjustAimRigWeightShooting = StartCoroutine(DecreaseRigWeight(1f));
+            isShooting = false;
+            _animator.SetBool(IsShooting,false);
+           
+            StopCoroutine(_startShootingCoroutine);
+            if (!_isAiming)
+            {
+                _adjustAimRigWeightShooting = StartCoroutine(DecreaseRigWeight(1f));
+            }
         }
     }
     public void OnLook(InputAction.CallbackContext context)
     {
         LookInput(context.ReadValue<Vector2>());
     }
-    public void LookInput(Vector2 newLookDirection)
+    private void LookInput(Vector2 newLookDirection)
     {
         _look = newLookDirection;
     }
     public void OnSprint(InputAction.CallbackContext context)
     {
-        if (context.started)
+        
+        if (context.started&&!_isAiming&&!isShooting)
         {
             isSprinting = true;
+            _aimRigWeight = 0f;
             _animator.SetBool(IsSprinting,true);
+            _rawDirection.x = 0;
+            _rawDirection.z = Mathf.Clamp(_rawDirection.z, 0f, 1f);
         }
-
+        
         if (context.canceled)
         {
-            isSprinting = false;
+            isSprinting = false; 
             _animator.SetBool(IsSprinting,false);
+            _rawDirection = new Vector3(_moveDirection.x, 0, _moveDirection.y);
         }
         
     }
+    #endregion
+
+    #region  Ienum
+    IEnumerator DecreaseRigWeight(float time)
+    {
+        float elapsedTime = 0f;
+        while (elapsedTime < time)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                elapsedTime = 0f;
+                yield return null;
+            }
+            else
+            {
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+        }
+
+        if (_isAiming||isShooting)
+        {
+            yield break;
+        }
+        _aimRigWeight = 0f;
+    }
+    IEnumerator ShootingCoroutine()
+    {
+        while (true)
+        {
+            Shoot();
+            muzzleParticle.Play();
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+    
     #endregion
 }
