@@ -17,7 +17,7 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] private float blendDampTime=0.1f;
     [SerializeField] private Transform cineMachineCameraTarget;
     [SerializeField] private float cameraAngleOverride = 0.0f;
-    [SerializeField] private CinemachineVirtualCamera virtualCamera;
+    [SerializeField] private CinemachineVirtualCamera defaultVirtualCamera;
     [SerializeField] private CinemachineVirtualCamera aimCamera;
     [SerializeField] [Range(0f, 2000f)] private float cameraSmoothDamp;
     [SerializeField] private bool _isAiming;
@@ -26,8 +26,8 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] private Vector2 _screenCenter;
     private Vector3 _moveDirection;
     private Vector3 _rawDirection;
-    private CharacterController _characterController;
-    private Animator _animator;
+    [SerializeField]private CharacterController _characterController;
+    [SerializeField]private Animator _animator;
     private bool _isGrounded;
     private float _fallVelocity = 0f;
     private float _gravity = -15;
@@ -36,7 +36,7 @@ public class PlayerController : NetworkBehaviour
     private float _cinemachineTargetYaw;
     private float _cinemachineTargetPitch;
     private float _aimRigWeight;
-    private Camera _camera;
+    [SerializeField]private Camera _camera;
     private static readonly int XAxisParameter = Animator.StringToHash("Xaxis");
     private static readonly int YAxisParameter = Animator.StringToHash("Yaxis");
     private static readonly int IsAimingAnimation = Animator.StringToHash("IsAiming");
@@ -47,34 +47,80 @@ public class PlayerController : NetworkBehaviour
     private Coroutine _adjustAimRigWeightShooting;
     private Coroutine _startShootingCoroutine;
     private float _lastShootTime;
-    
+    [SerializeField]private RigBuilder _rigBuilder;
+    private NetworkVariable<float> _networkRigValue = new NetworkVariable<float>();
+    [SerializeField] private PlayerInput _input;
+    [SerializeField]private MultiAimConstraint multiAimConstraint1;
+    [SerializeField]private MultiAimConstraint multiAimConstraint2;
+    [SerializeField]private MultiAimConstraint multiAimConstraint3;
+
     #endregion
     
     #region MonoBehavior
     private void Awake()
     {
-        //_camera = Camera.main;
-        _camera = GetComponentInChildren<Camera>();
-        _animator = GetComponent<Animator>();
-        _characterController = GetComponent<CharacterController>();
         _cinemachineTargetYaw = cineMachineCameraTarget.transform.rotation.eulerAngles.y;
         aimRig.weight = 0f;
+        _networkRigValue.Value = _aimRigWeight;
+        if (_camera == null)
+        {
+            _camera = Camera.main;
+        }
+
+        // aimCamera = GameObject.Find("AimCAM").GetComponent<CinemachineVirtualCamera>();
+        // defaultVirtualCamera = GameObject.Find("DefaultCam").GetComponent<CinemachineVirtualCamera>();
+
+
+        CinemachineVirtualCamera[] virtualCameras = FindObjectsOfType<CinemachineVirtualCamera>();
+        foreach (CinemachineVirtualCamera virtualCamera in virtualCameras)
+        {
+            if (virtualCamera.name == "DefaultCam")
+            {
+                defaultVirtualCamera = virtualCamera;
+            }
+            else if (virtualCamera.name == "AimCAM")
+            {
+                aimCamera = virtualCamera;
+            }
+        }
+        // var data = aim.data.sourceObjects;
+        // data.SetTransform(0, PlayerController.instance.aimTransform);
+        // aim.data.sourceObjects = data;
     }
+    
     private void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        aimCamera.gameObject.SetActive(false);
+        // Cursor.lockState = CursorLockMode.Locked;
+        // Cursor.visible = false;
     }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        if (IsClient && IsOwner)
+        {
+            _input = GetComponent<PlayerInput>();
+            _input.enabled = true;
+            defaultVirtualCamera.Follow = cineMachineCameraTarget;
+            defaultVirtualCamera.LookAt = cineMachineCameraTarget;
+            aimCamera.Follow = cineMachineCameraTarget;
+            aimCamera.LookAt = cineMachineCameraTarget;
+
+        }
+    }
+
     private void Update()
     {
-        _screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
-        Move();
-        CheckGround();
-        LerpRig();
-    }
-    private void LateUpdate()
-    {
-        CameraRotation();
+        if (IsOwner)
+        {
+            _screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+            Move();
+            CheckGround();
+            LerpRig();
+            CameraRotation();
+        }
+        
     }
 
     #endregion
@@ -119,7 +165,6 @@ public class PlayerController : NetworkBehaviour
             _fallVelocity = 0f;
         }
     }
- 
     private void Shoot()
     {
         GunKnockBack();
@@ -134,7 +179,6 @@ public class PlayerController : NetworkBehaviour
             Debug.Log(hitPoint);
         }
     }
-   
     private void GunKnockBack()
     {
         Gun.DOShakePosition(0.06f, 0.02f, 1, 1f, false,false);
@@ -176,7 +220,7 @@ public class PlayerController : NetworkBehaviour
             _isAiming = true;
             moveSpeed = 2f;
             _animator.SetBool(IsAimingAnimation,true);
-            virtualCamera.gameObject.SetActive(false);
+            defaultVirtualCamera.gameObject.SetActive(false);
             aimCamera.gameObject.SetActive(true);
             _aimRigWeight = 1f;
         }
@@ -184,7 +228,7 @@ public class PlayerController : NetworkBehaviour
         {
             moveSpeed = 5f;
             _animator.SetBool(IsAimingAnimation,false);
-            virtualCamera.gameObject.SetActive(true);
+            defaultVirtualCamera.gameObject.SetActive(true);
             aimCamera.gameObject.SetActive(false);
             _isAiming = false;
             _aimRigWeight = 0f;
