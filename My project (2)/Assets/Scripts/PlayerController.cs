@@ -1,11 +1,15 @@
 
 using System.Collections;
+using System.Collections.Generic;
 using Cinemachine;
 using DG.Tweening;
 using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.InputSystem;
+
+
 
 public class PlayerController : NetworkBehaviour 
 {
@@ -48,29 +52,32 @@ public class PlayerController : NetworkBehaviour
     private Coroutine _startShootingCoroutine;
     private float _lastShootTime;
     [SerializeField]private RigBuilder _rigBuilder;
-    private NetworkVariable<float> _networkRigValue = new NetworkVariable<float>();
     [SerializeField] private PlayerInput _input;
-    [SerializeField]private MultiAimConstraint multiAimConstraint1;
-    [SerializeField]private MultiAimConstraint multiAimConstraint2;
-    [SerializeField]private MultiAimConstraint multiAimConstraint3;
+
+    [SerializeField] public List<MultiAimConstraint> aimConstraints=new List<MultiAimConstraint>();
+    [SerializeField] public WeightedTransformArray TransformArray=new WeightedTransformArray();
+  
 
     #endregion
     
     #region MonoBehavior
     private void Awake()
     {
+
+        var rigTarget = GameObject.Find("RigTarget");
+        
+        TransformArray.SetTransform(0,rigTarget.transform);
+
+        foreach (var aimConstraint in aimConstraints)
+        {
+            aimConstraint.data.sourceObjects = TransformArray;
+        }
         _cinemachineTargetYaw = cineMachineCameraTarget.transform.rotation.eulerAngles.y;
         aimRig.weight = 0f;
-        _networkRigValue.Value = _aimRigWeight;
         if (_camera == null)
         {
             _camera = Camera.main;
         }
-
-        // aimCamera = GameObject.Find("AimCAM").GetComponent<CinemachineVirtualCamera>();
-        // defaultVirtualCamera = GameObject.Find("DefaultCam").GetComponent<CinemachineVirtualCamera>();
-
-
         CinemachineVirtualCamera[] virtualCameras = FindObjectsOfType<CinemachineVirtualCamera>();
         foreach (CinemachineVirtualCamera virtualCamera in virtualCameras)
         {
@@ -83,18 +90,13 @@ public class PlayerController : NetworkBehaviour
                 aimCamera = virtualCamera;
             }
         }
-        // var data = aim.data.sourceObjects;
-        // data.SetTransform(0, PlayerController.instance.aimTransform);
-        // aim.data.sourceObjects = data;
     }
-    
     private void Start()
     {
         aimCamera.gameObject.SetActive(false);
         // Cursor.lockState = CursorLockMode.Locked;
         // Cursor.visible = false;
     }
-
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -109,7 +111,6 @@ public class PlayerController : NetworkBehaviour
 
         }
     }
-
     private void Update()
     {
         if (IsOwner)
@@ -120,7 +121,6 @@ public class PlayerController : NetworkBehaviour
             LerpRig();
             CameraRotation();
         }
-        
     }
 
     #endregion

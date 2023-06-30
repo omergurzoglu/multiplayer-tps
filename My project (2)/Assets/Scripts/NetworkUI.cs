@@ -24,5 +24,6 @@ public class NetworkUI : MonoBehaviour
         {
             NetworkManager.Singleton.StartHost();
         }));
+        
     }
 }
