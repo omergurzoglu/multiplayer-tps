@@ -1,16 +1,11 @@
-
 using System.Collections;
 using System.Collections.Generic;
 using Cinemachine;
 using DG.Tweening;
 using Unity.Netcode;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.InputSystem;
-
-
-
 public class PlayerController : NetworkBehaviour 
 {
     #region Fields
@@ -53,25 +48,14 @@ public class PlayerController : NetworkBehaviour
     private float _lastShootTime;
     [SerializeField]private RigBuilder _rigBuilder;
     [SerializeField] private PlayerInput _input;
-
-    [SerializeField] public List<MultiAimConstraint> aimConstraints=new List<MultiAimConstraint>();
-    [SerializeField] public WeightedTransformArray TransformArray=new WeightedTransformArray();
-  
-
+    private NetworkVariable<float> syncAimRigWeight = new (default,NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    [SerializeField] public Transform rigTargetObject;
+    
     #endregion
     
     #region MonoBehavior
     private void Awake()
     {
-
-        var rigTarget = GameObject.Find("RigTarget");
-        
-        TransformArray.SetTransform(0,rigTarget.transform);
-
-        foreach (var aimConstraint in aimConstraints)
-        {
-            aimConstraint.data.sourceObjects = TransformArray;
-        }
         _cinemachineTargetYaw = cineMachineCameraTarget.transform.rotation.eulerAngles.y;
         aimRig.weight = 0f;
         if (_camera == null)
@@ -90,26 +74,30 @@ public class PlayerController : NetworkBehaviour
                 aimCamera = virtualCamera;
             }
         }
-    }
-    private void Start()
-    {
+        syncAimRigWeight.OnValueChanged += OnRigWeightChanged;
         aimCamera.gameObject.SetActive(false);
-        // Cursor.lockState = CursorLockMode.Locked;
-        // Cursor.visible = false;
+        _rigBuilder.Build();
     }
+    private void OnRigWeightChanged(float oldValue, float newValue)
+    {
+        _aimRigWeight = newValue;
+        aimRig.weight = newValue;
+    }
+    
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        if (IsClient && IsOwner)
+        if (IsOwner && IsClient)
         {
+            Debug.Log("on network spawn inside");
             _input = GetComponent<PlayerInput>();
             _input.enabled = true;
             defaultVirtualCamera.Follow = cineMachineCameraTarget;
             defaultVirtualCamera.LookAt = cineMachineCameraTarget;
             aimCamera.Follow = cineMachineCameraTarget;
             aimCamera.LookAt = cineMachineCameraTarget;
-
         }
+        
     }
     private void Update()
     {
@@ -120,6 +108,7 @@ public class PlayerController : NetworkBehaviour
             CheckGround();
             LerpRig();
             CameraRotation();
+            syncAimRigWeight.Value = _aimRigWeight;
         }
     }
 
@@ -172,6 +161,7 @@ public class PlayerController : NetworkBehaviour
         {
             _aimRigWeight = 1f;
         }
+        syncAimRigWeight.Value = _aimRigWeight;
         Ray ray = _camera.ScreenPointToRay(_screenCenter);
         if (Physics.Raycast(ray, out var hit,100f,environmentMask))
         {
@@ -197,7 +187,7 @@ public class PlayerController : NetworkBehaviour
     }
     private void LerpRig()
     {
-        aimRig.weight = Mathf.Lerp(aimRig.weight, _aimRigWeight, Time.deltaTime * 20);
+        aimRig.weight = Mathf.Lerp(aimRig.weight, _aimRigWeight, Time.deltaTime * 20); 
     }
     private static float ClampAngle(float lfAngle, float lfMin, float lfMax)
     {
@@ -233,6 +223,8 @@ public class PlayerController : NetworkBehaviour
             _isAiming = false;
             _aimRigWeight = 0f;
         }
+
+        syncAimRigWeight.Value = _aimRigWeight;
     }
     public void OnShoot(InputAction.CallbackContext context)
     {
@@ -281,6 +273,7 @@ public class PlayerController : NetworkBehaviour
             _animator.SetBool(IsSprinting,false);
             _rawDirection = new Vector3(_moveDirection.x, 0, _moveDirection.y);
         }
+        syncAimRigWeight.Value = _aimRigWeight;
         
     }
     #endregion
@@ -308,6 +301,7 @@ public class PlayerController : NetworkBehaviour
             yield break;
         }
         _aimRigWeight = 0f;
+        syncAimRigWeight.Value = _aimRigWeight;
     }
     IEnumerator ShootingCoroutine()
     {

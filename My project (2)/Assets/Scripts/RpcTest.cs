@@ -20,7 +20,7 @@ public class RpcTest : NetworkBehaviour
             TestServerRpc(value + 1, sourceNetworkObjectId);
         }
     }
-
+    
     [ServerRpc]
     void TestServerRpc(int value, ulong sourceNetworkObjectId)
     {
