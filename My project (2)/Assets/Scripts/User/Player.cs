@@ -2,6 +2,8 @@ using System.Collections;
 using Bots;
 using Cinemachine;
 using DG.Tweening;
+using DG.Tweening.Core;
+using Managers;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
@@ -80,6 +82,8 @@ namespace User
             syncAimRigWeight.OnValueChanged += OnRigWeightChanged;
             aimCamera.gameObject.SetActive(false);
             _rigBuilder.Build();
+            
+            GameManager.Instance.allPlayers.Add(this);
         }
         private void OnRigWeightChanged(float oldValue, float newValue)
         {
@@ -93,6 +97,7 @@ namespace User
             if (IsOwner && IsClient)
             {
                 Debug.Log("on network spawn inside");
+                
                 _input = GetComponent<PlayerInput>();
                 _input.enabled = true;
                 defaultVirtualCamera.Follow = cineMachineCameraTarget;
@@ -167,6 +172,10 @@ namespace User
         }
         private void Shoot()
         {
+            if(IsOwner) // make sure that it creates an rpc by only the owner,
+            {
+                PlayMuzzleForPlayer_ServerRpc(NetworkObjectId);
+            }
             GunKnockBack();
             if (_aimRigWeight <= 0.1f)
             {
@@ -323,7 +332,25 @@ namespace User
                 yield return new WaitForSeconds(0.1f);
             }
         }
-    
+        [ClientRpc]
+        private void PlayMuzzleFx_ClientRpc(ulong targetPlayerID)
+        {
+            if(targetPlayerID != NetworkObjectId) return; //to not play the muzzle particle on each player
+            Debug.Log("client rpc call");
+            muzzleParticle.Play();
+            
+        }
+        
+        [ServerRpc]
+        private void PlayMuzzleForPlayer_ServerRpc(ulong playerID)
+        {
+            foreach(var player in GameManager.Instance.allPlayers)
+            {
+                Debug.Log("server rpc call");
+                Debug.Log(player.NetworkManager.LocalClientId);
+                player.PlayMuzzleFx_ClientRpc(playerID);
+            }
+        }
         #endregion
     }
 }
