@@ -39,7 +39,7 @@ namespace User
         private Vector2 _look;
         private float _cinemachineTargetYaw;
         private float _cinemachineTargetPitch;
-        private float _aimRigWeight;
+        private float aimRigWeight;
         [SerializeField]private Camera _camera;
         private static readonly int XAxisParameter = Animator.StringToHash("Xaxis");
         private static readonly int YAxisParameter = Animator.StringToHash("Yaxis");
@@ -54,7 +54,7 @@ namespace User
         [SerializeField]private RigBuilder _rigBuilder;
         [SerializeField] private PlayerInput _input;
         private NetworkVariable<float> syncAimRigWeight = new (default,NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-        [SerializeField] public Transform rigTargetObject;
+        private float targetAimRigWeight;
     
         #endregion
     
@@ -87,8 +87,9 @@ namespace User
         }
         private void OnRigWeightChanged(float oldValue, float newValue)
         {
-            _aimRigWeight = newValue;
-            aimRig.weight = newValue;
+            aimRigWeight = newValue;
+            aimRig.weight = Mathf.Lerp(aimRig.weight, aimRigWeight, Time.deltaTime * 20);
+            //aimRig.weight = newValue;
         }
     
         public override void OnNetworkSpawn()
@@ -122,9 +123,10 @@ namespace User
                 _screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
                 Move();
                 CheckGround();
-                LerpRig();
+                
                 CameraRotation();
-                syncAimRigWeight.Value = _aimRigWeight;
+                //syncAimRigWeight.Value = aimRigWeight;
+                LerpRig();
             }
         }
 
@@ -177,11 +179,11 @@ namespace User
                 PlayMuzzleForPlayer_ServerRpc(NetworkObjectId);
             }
             GunKnockBack();
-            if (_aimRigWeight <= 0.1f)
+            if (aimRigWeight <= 0.1f)
             {
-                _aimRigWeight = 1f;
+                aimRigWeight = 1f;
             }
-            syncAimRigWeight.Value = _aimRigWeight;
+            syncAimRigWeight.Value = aimRigWeight;
             Ray ray = _camera.ScreenPointToRay(_screenCenter);
             if (Physics.Raycast(ray, out var hit,100f,environmentMask))
             {
@@ -207,7 +209,8 @@ namespace User
         }
         private void LerpRig()
         {
-            aimRig.weight = Mathf.Lerp(aimRig.weight, _aimRigWeight, Time.deltaTime * 20); 
+            aimRig.weight = Mathf.Lerp(aimRig.weight, aimRigWeight, Time.deltaTime * 20); 
+            
         }
         private static float ClampAngle(float lfAngle, float lfMin, float lfMax)
         {
@@ -232,7 +235,7 @@ namespace User
                 _animator.SetBool(IsAimingAnimation,true);
                 defaultVirtualCamera.gameObject.SetActive(false);
                 aimCamera.gameObject.SetActive(true);
-                _aimRigWeight = 1f;
+                aimRigWeight = 1f;
             }
             else
             {
@@ -241,10 +244,10 @@ namespace User
                 defaultVirtualCamera.gameObject.SetActive(true);
                 aimCamera.gameObject.SetActive(false);
                 _isAiming = false;
-                _aimRigWeight = 0f;
+                aimRigWeight = 0f;
             }
 
-            syncAimRigWeight.Value = _aimRigWeight;
+            syncAimRigWeight.Value = aimRigWeight;
         }
         public void OnShoot(InputAction.CallbackContext context)
         {
@@ -281,7 +284,7 @@ namespace User
             if (context.started&&!_isAiming&&!isShooting)
             {
                 isSprinting = true;
-                _aimRigWeight = 0f;
+                aimRigWeight = 0f;
                 _animator.SetBool(IsSprinting,true);
                 _rawDirection.x = 0;
                 _rawDirection.z = Mathf.Clamp(_rawDirection.z, 0f, 1f);
@@ -293,7 +296,7 @@ namespace User
                 _animator.SetBool(IsSprinting,false);
                 _rawDirection = new Vector3(_moveDirection.x, 0, _moveDirection.y);
             }
-            syncAimRigWeight.Value = _aimRigWeight;
+            syncAimRigWeight.Value = aimRigWeight;
         
         }
         #endregion
@@ -320,8 +323,8 @@ namespace User
             {
                 yield break;
             }
-            _aimRigWeight = 0f;
-            syncAimRigWeight.Value = _aimRigWeight;
+            aimRigWeight = 0f;
+            syncAimRigWeight.Value = aimRigWeight;
         }
         IEnumerator ShootingCoroutine()
         {
