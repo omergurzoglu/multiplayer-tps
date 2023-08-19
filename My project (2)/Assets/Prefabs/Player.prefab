@@ -2335,7 +2335,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &7210088706304705288
 Transform:
   m_ObjectHideFlags: 0
@@ -2358,21 +2358,21 @@ Light:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7210088706304705291}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 10
   m_Type: 2
   m_Shape: 0
   m_Color: {r: 0, g: 1, b: 0.60875654, a: 1}
-  m_Intensity: 2
-  m_Range: 5
+  m_Intensity: 2.5
+  m_Range: 4
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 0
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 1
+    m_Strength: 0.962
     m_Bias: 0.05
     m_NormalBias: 0.4
     m_NearPlane: 0.2
@@ -2402,11 +2402,11 @@ Light:
     serializedVersion: 2
     m_Bits: 2147483647
   m_RenderingLayerMask: 1
-  m_Lightmapping: 1
+  m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
-  m_BounceIntensity: 1
-  m_ColorTemperature: 20000
+  m_BounceIntensity: 0
+  m_ColorTemperature: 10110
   m_UseColorTemperature: 1
   m_BoundingSphereOverride: {x: 1.02e-43, y: 0, z: 0, w: -4.6083482e+33}
   m_UseBoundingSphereOverride: 0
@@ -2913,8 +2913,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 432a20429a2a4911bee9b30d093bd507, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cameraPrefab: {fileID: 2552960507396877350, guid: d6c86f7d225b3004b94954e68c0c637f,
-    type: 3}
   moveSpeed: 5
   environmentMask:
     serializedVersion: 2
@@ -2938,37 +2936,6 @@ MonoBehaviour:
   isSprinting: 0
   _rigBuilder: {fileID: 7551983158804408036}
   _input: {fileID: 7551983158804408038}
-  aimConstraints:
-  - {fileID: 7210088706292128978}
-  - {fileID: 7210088706082465405}
-  - {fileID: 7210088706729459797}
-  multiAimRigTargetObjectReference:
-    m_Length: 1
-    m_Item0:
-      transform: {fileID: 0}
-      weight: 1
-    m_Item1:
-      transform: {fileID: 0}
-      weight: 0
-    m_Item2:
-      transform: {fileID: 0}
-      weight: 0
-    m_Item3:
-      transform: {fileID: 0}
-      weight: 0
-    m_Item4:
-      transform: {fileID: 0}
-      weight: 0
-    m_Item5:
-      transform: {fileID: 0}
-      weight: 0
-    m_Item6:
-      transform: {fileID: 0}
-      weight: 0
-    m_Item7:
-      transform: {fileID: 0}
-      weight: 0
-  rigTargetObject: {fileID: 0}
 --- !u!114 &7551983158804408038
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3407,7 +3374,7 @@ SkinnedMeshRenderer:
   m_Quality: 0
   m_UpdateWhenOffscreen: 0
   m_SkinnedMotionVectors: 1
-  m_Mesh: {fileID: 4698152120088058464, guid: bc4248a81a63bcd4cadc00dcf6f68de1, type: 3}
+  m_Mesh: {fileID: 4698152120088058464, guid: de4778d1b51e7554191410e0de4d3128, type: 3}
   m_Bones:
   - {fileID: 2286186458908161687}
   - {fileID: 1179599623570668801}
@@ -3999,11 +3966,16 @@ PrefabInstance:
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
       propertyPath: LightsModule.range
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
       propertyPath: LightsModule.ratio
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
+        type: 3}
+      propertyPath: NoiseModule.enabled
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
@@ -4018,13 +3990,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
+      propertyPath: NoiseModule.separateAxes
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
+        type: 3}
+      propertyPath: LightsModule.rangeCurve.scalar
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
+        type: 3}
       propertyPath: InitialModule.startSpeed.scalar
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
       propertyPath: LightsModule.randomDistribution
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
@@ -4039,7 +4021,7 @@ PrefabInstance:
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
       propertyPath: LightsModule.intensityCurve.scalar
-      value: 2
+      value: 2.5
       objectReference: {fileID: 0}
     - target: {fileID: 7692336672675980230, guid: ab3efdcb3e4feb14d882aa1cac56309f,
         type: 3}
