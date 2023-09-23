@@ -2,9 +2,9 @@ using System.Collections;
 using Bots;
 using Cinemachine;
 using DG.Tweening;
-using DG.Tweening.Core;
 using Managers;
 using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 using UnityEngine.InputSystem;
@@ -15,7 +15,7 @@ namespace User
     {
         #region Fields
         [SerializeField] private float moveSpeed = 5f;
-        [SerializeField] private LayerMask environmentMask;
+        [SerializeField] private LayerMask botMask;
         [SerializeField] private Rig aimRig;
         [SerializeField] private float deltaTimeMultiplier =   1.0f ;
         [SerializeField] private float blendDampTime=0.1f;
@@ -28,6 +28,7 @@ namespace User
         [SerializeField] private ParticleSystem muzzleParticle;
         [SerializeField] private Transform Gun;
         [SerializeField] private Vector2 _screenCenter;
+        [SerializeField] private ParticleSystem bulletFx;
         private Vector3 _moveDirection;
         private Vector3 _rawDirection;
         [SerializeField]private CharacterController _characterController;
@@ -57,7 +58,7 @@ namespace User
         private float targetAimRigWeight;
     
         #endregion
-    
+        
         #region MonoBehavior
         private void Awake()
         {
@@ -89,9 +90,7 @@ namespace User
         {
             aimRigWeight = newValue;
             aimRig.weight = Mathf.Lerp(aimRig.weight, aimRigWeight, Time.deltaTime * 20);
-            //aimRig.weight = newValue;
         }
-    
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
@@ -105,35 +104,32 @@ namespace User
                 defaultVirtualCamera.LookAt = cineMachineCameraTarget;
                 aimCamera.Follow = cineMachineCameraTarget;
                 aimCamera.LookAt = cineMachineCameraTarget;
-
-                var bots = FindObjectsOfType<Bot>();
-                foreach (var bot in bots)
-                {
-                    bot.AggroPlayer(this);
-                }
-                
             }
         }
-
-       
-        private void Update()
+        private void Start()
         {
             if (IsOwner)
             {
                 _screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
+            }
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            var botManager = FindObjectOfType<BotManager>();
+            botManager.NotifyBotsOfNewPlayer(this);
+        }
+
+        private void Update()
+        {
+            if (IsOwner)
+            {
                 Move();
                 CheckGround();
-                
                 CameraRotation();
-                //syncAimRigWeight.Value = aimRigWeight;
                 LerpRig();
             }
         }
-
         #endregion
-    
         #region MainMethods
-    
         private void Move()
         {
             Vector3 cameraForward = _camera.transform.forward;
@@ -174,7 +170,7 @@ namespace User
         }
         private void Shoot()
         {
-            if(IsOwner) // make sure that it creates an rpc by only the owner,
+            if(IsOwner) 
             {
                 PlayMuzzleForPlayer_ServerRpc(NetworkObjectId);
             }
@@ -185,10 +181,15 @@ namespace User
             }
             syncAimRigWeight.Value = aimRigWeight;
             Ray ray = _camera.ScreenPointToRay(_screenCenter);
-            if (Physics.Raycast(ray, out var hit,100f,environmentMask))
+            if (Physics.Raycast(ray, out var hit,100f,botMask))
             {
-                Vector3 hitPoint = hit.point;
-                Debug.Log(hitPoint);
+                bulletFx.transform.position = hit.point;
+                bulletFx.Play();
+                Debug.Log("bullet fx playing");
+                if (hit.collider.TryGetComponent<Bot>(out var bot))
+                {
+                    bot.DamageBotServerRpc();
+                }
             }
         }
         private void GunKnockBack()
@@ -219,7 +220,6 @@ namespace User
             return Mathf.Clamp(lfAngle, lfMin, lfMax);
         }
         #endregion
-    
         #region Input
         public void OnMove(InputAction.CallbackContext context)
         {
@@ -300,7 +300,6 @@ namespace User
         
         }
         #endregion
-
         #region  Ienum
         IEnumerator DecreaseRigWeight(float time)
         {
@@ -339,18 +338,14 @@ namespace User
         private void PlayMuzzleFx_ClientRpc(ulong targetPlayerID)
         {
             if(targetPlayerID != NetworkObjectId) return; //to not play the muzzle particle on each player
-            Debug.Log("client rpc call");
             muzzleParticle.Play();
             
         }
-        
         [ServerRpc]
         private void PlayMuzzleForPlayer_ServerRpc(ulong playerID)
         {
             foreach(var player in GameManager.Instance.allPlayers)
             {
-                Debug.Log("server rpc call");
-                Debug.Log(player.NetworkManager.LocalClientId);
                 player.PlayMuzzleFx_ClientRpc(playerID);
             }
         }

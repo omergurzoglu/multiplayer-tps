@@ -80,14 +80,14 @@ Material:
     - Boolean_7AC8D832: 1
     - Vector1_3402D67A: 1
     - Vector1_3655428E: 5
-    - Vector1_5B05FA1F: 0.062
-    - Vector1_6B67A8FF: -20
+    - Vector1_5B05FA1F: 0
+    - Vector1_6B67A8FF: 200
     - Vector1_7810F718: 1
-    - Vector1_B6126E6E: 0.335
+    - Vector1_B6126E6E: 0
     - Vector1_CA7D5F3: 1196
     - Vector1_D5FBE925: 0.3
-    - Vector1_F2A922B4: 1.73
-    - Vector1_F5FD9210: 33.9
+    - Vector1_F2A922B4: 1.24
+    - Vector1_F5FD9210: 125.7
     - _BumpScale: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
